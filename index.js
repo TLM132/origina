@@ -148,7 +148,10 @@ app.get("/api/guild/members", async (req, res) => {
 
   const members = guild.members.cache
     .filter(m => !m.user.bot)
-    .map(m => ({ id: m.id, name: m.user.tag }));
+    .map(m => ({
+      id: m.id,
+      name: m.user.username // show username, not ID
+    }));
 
   res.json(members);
 });
@@ -464,8 +467,8 @@ async function finalizeActivityCheck(check) {
 
     guild.members.cache.forEach(m => {
       if (m.user.bot) return;
-      if (reacted.has(m.id)) active.push(m.user.tag);
-      else inactive.push(m.user.tag);
+      if (reacted.has(m.id)) active.push(m.user.username);
+      else inactive.push(m.user.username);
     });
 
     const embed = new EmbedBuilder()
@@ -519,7 +522,7 @@ client.on("messageDelete", async message => {
   save.serverEvents.push({
     type: "message_deleted",
     content: message.content || "(no content)",
-    author: message.author ? message.author.tag : "Unknown",
+    author: message.author ? message.author.username : "Unknown",
     channel: message.channel.name,
     timestamp: Date.now()
   });
