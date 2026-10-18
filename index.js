@@ -20,32 +20,45 @@ require("dotenv").config();
 const config = require("./config.json");
 
 // ===============================
-// Load save.json
+// Self-Healing save.json
 // ===============================
 const SAVE_PATH = path.join(__dirname, "save.json");
 
-if (!fs.existsSync(SAVE_PATH)) {
-  fs.writeFileSync(
-    SAVE_PATH,
-    JSON.stringify(
-      {
-        staffPoints: {},
-        warnings: {},
-        raidLogs: [],
-        adultLogs: [],
-        serverEvents: [],
-        tickets: [],
-        trustedBotAdders: [],
-        activityChecks: [],
-        antiRaidEnabled: false
-      },
-      null,
-      2
-    )
-  );
+function healSave() {
+  let base = {
+    staffPoints: {},
+    warnings: {},
+    raidLogs: [],
+    adultLogs: [],
+    serverEvents: [],
+    tickets: [],
+    trustedBotAdders: [],
+    activityChecks: [],
+    antiRaidEnabled: false
+  };
+
+  if (!fs.existsSync(SAVE_PATH)) {
+    fs.writeFileSync(SAVE_PATH, JSON.stringify(base, null, 2));
+    return base;
+  }
+
+  let loaded = {};
+  try {
+    loaded = JSON.parse(fs.readFileSync(SAVE_PATH, "utf8"));
+  } catch {
+    loaded = {};
+  }
+
+  for (const key of Object.keys(base)) {
+    if (loaded[key] === undefined) loaded[key] = base[key];
+  }
+
+  fs.writeFileSync(SAVE_PATH, JSON.stringify(loaded, null, 2));
+  return loaded;
 }
 
-let save = JSON.parse(fs.readFileSync(SAVE_PATH, "utf8"));
+let save = healSave();
+
 function writeSave() {
   fs.writeFileSync(SAVE_PATH, JSON.stringify(save, null, 2));
 }
@@ -72,19 +85,15 @@ const GUILD_ID = process.env.GUILD_ID;
 const app = express();
 app.use(bodyParser.json());
 
-// Serve dashboard.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
 
-// Access check
 app.post("/api/access/check", (req, res) => {
   const { key } = req.body;
-  if (key === config.dashboardKey) return res.json({ allowed: true });
-  res.json({ allowed: false });
+  res.json({ allowed: key === config.dashboardKey });
 });
 
-// Manual save endpoint
 app.post("/api/save", (req, res) => {
   writeSave();
   res.json({ success: true });
@@ -96,16 +105,14 @@ app.post("/api/save", (req, res) => {
 async function getGuild() {
   try {
     return await client.guilds.fetch(GUILD_ID);
-  } catch (e) {
-    console.log("Guild fetch failed:", e);
+  } catch {
     return null;
   }
 }
 
 // ===============================
-// Guild Data Endpoints
+// Dropdown Endpoints (FIXED)
 // ===============================
-
 app.get("/api/guild/text-channels", async (req, res) => {
   const guild = await getGuild();
   if (!guild) return res.json([]);
@@ -136,10 +143,7 @@ app.get("/api/guild/members", async (req, res) => {
 
   const members = guild.members.cache
     .filter(m => !m.user.bot)
-    .map(m => ({
-      id: m.id,
-      name: m.user.tag
-    }));
+    .map(m => ({ id: m.id, name: m.user.tag }));
 
   res.json(members);
 });
@@ -147,10 +151,11 @@ app.get("/api/guild/members", async (req, res) => {
 // ===============================
 // Moderation
 // ===============================
-app.post("/api/mod/warn", async (req, res) => {
+app.post("/api/mod/warn", (req, res) => {
   const { userId, reason } = req.body;
 
   if (!save.warnings[userId]) save.warnings[userId] = [];
+
   save.warnings[userId].push({
     reason,
     timestamp: Date.now()
@@ -300,7 +305,7 @@ app.post("/api/tickets/panel/create", async (req, res) => {
 
     writeSave();
     res.json({ success: true, messageId: msg.id });
-  } catch (e) {
+  } catch {
     res.json({ error: "Failed to create panel" });
   }
 });
@@ -478,9 +483,7 @@ async function finalizeActivityCheck(check) {
     });
 
     writeSave();
-  } catch (e) {
-    console.log("Activity check finalize error:", e);
-  }
+  } catch {}
 }
 
 client.on("messageReactionAdd", async (reaction, user) => {
