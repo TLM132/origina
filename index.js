@@ -77,7 +77,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-const GUILD_ID = process.env.GUILD_ID || null;
+const GUILD_ID = process.env.GUILD_ID;
 
 // ===============================
 // Express Server
@@ -100,17 +100,12 @@ app.post("/api/save", (req, res) => {
 });
 
 // ===============================
-// Guild Helper (auto-pick first guild if GUILD_ID missing)
+// Guild Helper (ONLY uses GUILD_ID)
 // ===============================
 async function getGuild() {
+  if (!GUILD_ID) return null;
   try {
-    if (GUILD_ID) {
-      return await client.guilds.fetch(GUILD_ID);
-    }
-    const guilds = await client.guilds.fetch();
-    const first = guilds.first();
-    if (!first) return null;
-    return await client.guilds.fetch(first.id);
+    return await client.guilds.fetch(GUILD_ID);
   } catch {
     return null;
   }
