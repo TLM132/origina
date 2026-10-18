@@ -542,6 +542,20 @@ client.on("messageDelete", async message => {
 
   writeSave();
 });
+client.once("ready", async () => {
+  console.log("BOT READY:", client.user.tag);
+
+  console.log("ENV GUILD_ID:", process.env.GUILD_ID);
+
+  try {
+    const guild = await client.guilds.fetch(process.env.GUILD_ID);
+    console.log("CONNECTED TO GUILD:", guild.name);
+    console.log("GUILD ID MATCH:", guild.id);
+  } catch (e) {
+    console.log("❌ FAILED TO FETCH GUILD");
+    console.log(e);
+  }
+});
 
 // ===============================
 // START SERVER + BOT
