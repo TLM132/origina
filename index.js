@@ -77,7 +77,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-const GUILD_ID = process.env.GUILD_ID;
+const GUILD_ID = process.env.GUILD_ID || null;
 
 // ===============================
 // Express Server
@@ -100,22 +100,30 @@ app.post("/api/save", (req, res) => {
 });
 
 // ===============================
-// Guild Helper
+// Guild Helper (auto-pick first guild if GUILD_ID missing)
 // ===============================
 async function getGuild() {
   try {
-    return await client.guilds.fetch(GUILD_ID);
+    if (GUILD_ID) {
+      return await client.guilds.fetch(GUILD_ID);
+    }
+    const guilds = await client.guilds.fetch();
+    const first = guilds.first();
+    if (!first) return null;
+    return await client.guilds.fetch(first.id);
   } catch {
     return null;
   }
 }
 
 // ===============================
-// Dropdown Endpoints (FIXED)
+// Dropdown Endpoints
 // ===============================
 app.get("/api/guild/text-channels", async (req, res) => {
   const guild = await getGuild();
   if (!guild) return res.json([]);
+
+  await guild.channels.fetch();
 
   const channels = guild.channels.cache
     .filter(ch => ch.type === 0)
@@ -127,6 +135,8 @@ app.get("/api/guild/text-channels", async (req, res) => {
 app.get("/api/guild/categories", async (req, res) => {
   const guild = await getGuild();
   if (!guild) return res.json([]);
+
+  await guild.channels.fetch();
 
   const categories = guild.channels.cache
     .filter(ch => ch.type === 4)
