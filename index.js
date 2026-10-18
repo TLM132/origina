@@ -77,7 +77,15 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
+// ===============================
+// REQUIRED GUILD ID
+// ===============================
 const GUILD_ID = process.env.GUILD_ID;
+
+if (!GUILD_ID) {
+  console.error("❌ ERROR: GUILD_ID is missing in environment variables.");
+  process.exit(1);
+}
 
 // ===============================
 // Express Server
@@ -103,16 +111,18 @@ app.post("/api/save", (req, res) => {
 // Guild Helper (ONLY uses GUILD_ID)
 // ===============================
 async function getGuild() {
-  if (!GUILD_ID) return null;
   try {
-    return await client.guilds.fetch(GUILD_ID);
-  } catch {
+    const guild = await client.guilds.fetch(GUILD_ID);
+    return guild;
+  } catch (e) {
+    console.error("❌ ERROR: Cannot fetch guild with GUILD_ID:", GUILD_ID);
+    console.error(e);
     return null;
   }
 }
 
 // ===============================
-// Dropdown Endpoints
+// Dropdown Endpoints (FIXED)
 // ===============================
 app.get("/api/guild/text-channels", async (req, res) => {
   const guild = await getGuild();
@@ -150,7 +160,7 @@ app.get("/api/guild/members", async (req, res) => {
     .filter(m => !m.user.bot)
     .map(m => ({
       id: m.id,
-      name: m.user.username // show username, not ID
+      name: m.user.username // FIXED: username instead of ID
     }));
 
   res.json(members);
@@ -180,6 +190,9 @@ app.post("/api/mod/warn", (req, res) => {
   res.json({ success: true });
 });
 
+// ===============================
+// Kick / Ban
+// ===============================
 app.post("/api/mod/kick", async (req, res) => {
   const { userId, reason } = req.body;
   const guild = await getGuild();
@@ -537,8 +550,15 @@ app.listen(config.port, () => {
   console.log(`Dashboard running on http://localhost:${config.port}`);
 });
 
-client.once("clientReady", () => {
+client.once("clientReady", async () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  try {
+    const guild = await client.guilds.fetch(GUILD_ID);
+    console.log("✔ Connected to guild:", guild.name);
+  } catch {
+    console.log("❌ Could not connect to guild with ID:", GUILD_ID);
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN);
