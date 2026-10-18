@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Origin SMP Staff Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  background: #0a0a0a;
+  font-family: "Segoe UI", sans-serif;
+  color: #f0f0f0;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+:root {
+  --accent: #ff7b00;
+  --accent2: #ffb066;
+  --bg-dark: #111;
+  --bg-darker: #0d0d0d;
+}
+
+/* SIDEBAR */
+#sidebar {
+  width: 260px;
+  background: #0d0d0d;
+  border-right: 1px solid #222;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+#sidebar h1 {
+  color: var(--accent);
+  margin: 0 0 20px;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.nav-item {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #151515;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.nav-item:hover {
+  background: #1f1f1f;
+}
+
+.nav-item.active {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #000;
+}
+
+/* CONTENT */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.section {
+  background: #111;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px #000;
+  border: 1px solid #222;
+}
+
+.section h2 {
+  margin-top: 0;
+  color: var(--accent2);
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+select, input, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  background: #1b1b1b;
+  color: #fff;
+}
+
+button.action {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.info-box {
+  margin-top: 12px;
+  background: #181818;
+  border-left: 4px solid var(--accent);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* LOGS */
+.log-entry {
+  background: #1a1a1a;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 4px solid var(--accent);
+  font-size: 0.85rem;
+}
+
+/* SAVE BAR */
+#save-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 260px;
+  right: 0;
+  background: #111;
+  padding: 10px 20px;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#save-bar button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* LOGIN */
+#login-screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+#login-box {
+  background: #111;
+  padding: 30px;
+  border-radius: 14px;
+  box-shadow: 0 0 30px var(--accent);
+  text-align: center;
+  width: 340px;
+}
+
+#login-box h1 {
+  margin: 0 0 10px;
+  color: var(--accent);
+}
+
+#login-box input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  background: #222;
+  color: #fff;
+}
+
+#login-box button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 15px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div id="login-box">
+    <h1>Origin SMP Staff</h1>
+    <p>Enter dashboard access key</p>
+    <input id="accessKey" type="password" placeholder="Dashboard Key">
+    <button onclick="login()">Enter</button>
+    <p id="login-error" style="color:red; display:none;">Invalid key</p>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <h1>Origin SMP</h1>
+  <div class="nav-item active" onclick="switchTab('main')">Main Panel</div>
+  <div class="nav-item" onclick="switchTab('advanced')">Advanced Moderation</div>
+  <div class="nav-item" onclick="switchTab('logs')">Logs</div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- MAIN -->
+  <div id="tab-main">
+
+    <div class="section">
+      <h2>Moderation</h2>
+      <label>Member</label>
+      <select id="mod-member"></select>
+
+      <label>Reason</label>
+      <input id="mod-reason" type="text">
+
+      <button class="action" onclick="modAction('warn')">Warn</button>
+      <button class="action" onclick="modAction('kick')">Kick</button>
+      <button class="action" onclick="modAction('ban')">Ban</button>
+
+      <div id="mod-result" class="info-box"></div>
+    </div>
+
+    <div class="section">
+      <h2>Activity Checker</h2>
+      <label>Channel</label>
+      <select id="activity-channel"></select>
+
+      <label>Duration (minutes)</label>
+      <input id="activity-duration" type="number" value="30">
+
+      <label>Required Count</label>
+      <input id="activity-required" type="number" value="5">
+
+      <button class="action" onclick="createActivityCheck()">Create Activity Check</button>
+
+      <div id="activity-result" class="info-box"></div>
+    </div>
+
+    <div class="section">
+      <h2>Ticket Panel Sender</h2>
+      <label>Channel</label>
+      <select id="ticket-channel"></select>
+
+      <label>Category</label>
+      <select id="ticket-category"></select>
+
+      <label>Panel Title</label>
+      <input id="ticket-title" type="text">
+
+      <label>Panel Description</label>
+      <textarea id="ticket-description" rows="3"></textarea>
+
+      <button class="action" onclick="createTicketPanel()">Send Ticket Panel</button>
+
+      <div id="ticket-result" class="info-box"></div>
+    </div>
+
+    <div class="section">
+      <h2>Anti-Raid & Trusted People</h2>
+
+      <label>
+        <input type="checkbox" id="anti-raid-toggle" onchange="markChanged()"> Kick bot when added by untrusted person
+      </label>
+
+      <label>Add Trusted Person</label>
+      <select id="trusted-add"></select>
+      <button class="action" onclick="addTrusted()">Add</button>
+
+      <label>Trusted People</label>
+      <select id="trusted-list"></select>
+      <button class="action" onclick="removeTrusted()">Remove</button>
+
+      <div id="anti-raid-result" class="info-box"></div>
+    </div>
+
+  </div>
+
+  <!-- ADVANCED -->
+  <div id="tab-advanced" style="display:none;">
+
+    <div class="section">
+      <h2>Warnings</h2>
+      <div id="warnings-list"></div>
+    </div>
+
+    <div class="section">
+      <h2>Staff Points</h2>
+      <label>Member</label>
+      <select id="points-member"></select>
+
+      <label>Points to Add</label>
+      <input id="points-add" type="number" value="1">
+
+      <button class="action" onclick="addPoints()">Add Points</button>
+
+      <div id="points-result" class="info-box"></div>
+
+      <h3 style="margin-top:20px;color:var(--accent2);">Leaderboard</h3>
+      <div id="points-leaderboard"></div>
+    </div>
+
+  </div>
+
+  <!-- LOGS -->
+  <div id="tab-logs" style="display:none;">
+
+    <div class="section">
+      <h2>Adult Logs</h2>
+      <div id="adult-logs"></div>
+    </div>
+
+    <div class="section">
+      <h2>Server Events</h2>
+      <div id="server-events"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- SAVE BAR -->
+<div id="save-bar">
+  <span>Changes pending. Press Save.</span>
+  <button onclick="saveChanges()">Save</button>
+</div>
+
+<script>
+let channels = [];
+let categories = [];
+let members = [];
+let changed = false;
+
+function switchTab(tab) {
+  document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add("active");
+
+  document.querySelectorAll("#content > div").forEach(d => d.style.display = "none");
+  document.getElementById(`tab-${tab}`).style.display = "block";
+}
+
+function showSaveBar() {
+  changed = true;
+  document.getElementById("save-bar").style.display = "flex";
+}
+
+function markChanged() {
+  showSaveBar();
+}
+
+async function login() {
+  const key = document.getElementById("accessKey").value;
+
+  const res = await fetch("/api/access/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key })
+  });
+
+  const data = await res.json();
+
+  if (!data.allowed) {
+    document.getElementById("login-error").style.display = "block";
+    return;
+  }
+
+  document.getElementById("login-screen").style.display = "none";
+
+  loadAllData();
+}
+
+async function loadAllData() {
+  const [
+    channelsRes,
+    categoriesRes,
+    membersRes,
+    antiRaidRes,
+    adultLogsRes,
+    serverEventsRes,
+    pointsRes
+  ] = await Promise.all([
+    fetch("/api/guild/text-channels"),
+    fetch("/api/guild/categories"),
+    fetch("/api/guild/members"),
+    fetch("/api/anti-raid/state"),
+    fetch("/api/adult/logs"),
+    fetch("/api/server/events"),
+    fetch("/api/staff/points")
+  ]);
+
+  channels = await channelsRes.json();
+  categories = await categoriesRes.json();
+  members = await membersRes.json();
+  const antiRaidState = await antiRaidRes.json();
+  const adultLogs = await adultLogsRes.json();
+  const serverEvents = await serverEventsRes.json();
+  const staffPoints = await pointsRes.json();
+
+  fillSelect("mod-member", members);
+  fillSelect("activity-channel", channels);
+  fillSelect("ticket-channel", channels);
+  fillSelect("ticket-category", categories);
+  fillSelect("trusted-add", members);
+  fillSelect("points-member", members);
+
+  const trustedListSel = document.getElementById("trusted-list");
+  trustedListSel.innerHTML = "";
+  (antiRaidState.trustedBotAdders || []).forEach(id => {
+    const m = members.find(mem => mem.id === id);
+    trustedListSel.innerHTML += `<option value="${id}">${m ? m.name : id}</option>`;
+  });
+
+  document.getElementById("anti-raid-toggle").checked =
+    !!antiRaidState.antiRaidEnabled;
+
+  renderAdultLogs(adultLogs);
+  renderServerEvents(serverEvents);
+  renderPointsLeaderboard(staffPoints);
+
+  changed = false;
+  document.getElementById("save-bar").style.display = "none";
+}
+
+function fillSelect(id, items) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = "";
+  items.forEach(i => {
+    sel.innerHTML += `<option value="${i.id}">${i.name}</option>`;
+  });
+}
+
+/* MODERATION */
+async function modAction(type) {
+  const userId = document.getElementById("mod-member").value;
+  const reason = document.getElementById("mod-reason").value;
+  const resultBox = document.getElementById("mod-result");
+
+  const res = await fetch(`/api/mod/${type}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, reason })
+  });
+
+  const data = await res.json();
+  resultBox.innerHTML = data.success ? "Success" : "Error";
+}
+
+/* ACTIVITY CHECKER */
+async function createActivityCheck() {
+  const channelId = document.getElementById("activity-channel").value;
+  const durationMinutes = Number(document.getElementById("activity-duration").value);
+  const requiredCount = Number(document.getElementById("activity-required").value);
+  const resultBox = document.getElementById("activity-result");
+
+  const res = await fetch("/api/activity/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ channelId, durationMinutes, requiredCount })
+  });
+
+  const data = await res.json();
+  resultBox.innerHTML = data.success ? "Activity check created" : "Error";
+}
+
+/* TICKET PANEL */
+async function createTicketPanel() {
+  const channelId = document.getElementById("ticket-channel").value;
+  const categoryId = document.getElementById("ticket-category").value;
+  const title = document.getElementById("ticket-title").value;
+  const description = document.getElementById("ticket-description").value;
+  const resultBox = document.getElementById("ticket-result");
+
+  const res = await fetch("/api/tickets/panel/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ channelId, title, description, categoryId })
+  });
+
+  const data = await res.json();
+  resultBox.innerHTML = data.success ? "Ticket panel sent" : "Error";
+}
+
+/* TRUSTED PEOPLE */
+async function addTrusted() {
+  const userId = document.getElementById("trusted-add").value;
+  const resultBox = document.getElementById("anti-raid-result");
+
+  const res = await fetch("/api/trusted-bot-adders/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId })
+  });
+
+  const data = await res.json();
+  resultBox.innerHTML = "Trusted updated";
+  showSaveBar();
+}
+
+async function removeTrusted() {
+  const userId = document.getElementById("trusted-list").value;
+  const resultBox = document.getElementById("anti-raid-result");
+
+  const res = await fetch("/api/trusted-bot-adders/remove", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId })
+  });
+
+  const data = await res.json();
+  resultBox.innerHTML = "Trusted updated";
+  showSaveBar();
+}
+
+/* SAVE */
+async function saveChanges() {
+  const antiRaidEnabled = document.getElementById("anti-raid-toggle").checked;
+
+  await fetch("/api/anti-raid/toggle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled: antiRaidEnabled })
+  });
+
+  await fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  });
+
+  document.getElementById("save-bar").style.display = "none";
+  changed = false;
+}
+
+/* LOGS */
+function renderAdultLogs(logs) {
+  const container = document.getElementById("adult-logs");
+  container.innerHTML = "";
+  if (!logs || !logs.length) {
+    container.innerHTML = "<div class='log-entry'>No adult logs yet.</div>";
+    return;
+  }
+  logs.forEach(l => {
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    div.innerHTML = `<strong>${new Date(l.timestamp).toLocaleString()}</strong><br>User: ${l.userId}<br>${l.description}`;
+    container.appendChild(div);
+  });
+}
+
+function renderServerEvents(events) {
+  const container = document.getElementById("server-events");
+  container.innerHTML = "";
+  if (!events || !events.length) {
+    container.innerHTML = "<div class='log-entry'>No server events yet.</div>";
+    return;
+  }
+  events.slice().reverse().forEach(e => {
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    let text = `<strong>${new Date(e.timestamp).toLocaleString()}</strong><br>Type: ${e.type}`;
+    if (e.userId) text += `<br>User: ${e.userId}`;
+    if (e.reason) text += `<br>Reason: ${e.reason}`;
+    if (e.content) text += `<br>Message: ${e.content}`;
+    if (e.channel) text += `<br>Channel: ${e.channel}`;
+    div.innerHTML = text;
+    container.appendChild(div);
+  });
+}
+
+function renderPointsLeaderboard(points) {
+  const container = document.getElementById("points-leaderboard");
+  container.innerHTML = "";
+  if (!points || !Object.keys(points).length) {
+    container.innerHTML = "<div class='log-entry'>No staff points yet.</div>";
+    return;
+  }
+
+  const sorted = Object.entries(points).sort((a, b) => b[1] - a[1]);
+
+  sorted.forEach(([userId, pts]) => {
+    const m = members.find(mem => mem.id === userId);
+    const name = m ? m.name : userId;
+
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    div.innerHTML = `${name}: ${pts} points`;
+    container.appendChild(div);
+  });
+}
+
+/* STAFF POINTS ADD (front-end only, expects backend later) */
+async function addPoints() {
+  const userId = document.getElementById("points-member").value;
+  const amount = Number(document.getElementById("points-add").value) || 0;
+  const resultBox = document.getElementById("points-result");
+
+  // This expects a backend route /api/staff/points/add
+  const res = await fetch("/api/staff/points/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, amount })
+  });
+
+  const data = await res.json();
+  resultBox.innerHTML = data.success ? "Points updated." : "Error updating points.";
+}
+</script>
+
+</body>
+</html>

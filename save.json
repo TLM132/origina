@@ -1,0 +1,83 @@
+{
+  "staffPoints": {},
+  "warnings": {
+    "1482671904488685673": [
+      {
+        "reason": "",
+        "timestamp": 1792298732935
+      },
+      {
+        "reason": "idk",
+        "timestamp": 1792298738130
+      }
+    ]
+  },
+  "raidLogs": [],
+  "adultLogs": [],
+  "serverEvents": [
+    {
+      "type": "warn",
+      "userId": "1482671904488685673",
+      "reason": "",
+      "timestamp": 1792298732935
+    },
+    {
+      "type": "warn",
+      "userId": "1482671904488685673",
+      "reason": "idk",
+      "timestamp": 1792298738130
+    },
+    {
+      "type": "activity_check_created",
+      "channelId": "1560960746249003020",
+      "timestamp": 1792298746320
+    },
+    {
+      "type": "ticket_panel_sent",
+      "channelId": "1560960746249003020",
+      "timestamp": 1792298753018
+    },
+    {
+      "type": "trusted_add",
+      "userId": "1482671904488685673",
+      "timestamp": 1792298762570
+    },
+    {
+      "type": "anti_raid_toggle",
+      "enabled": false,
+      "timestamp": 1792298764402
+    },
+    {
+      "type": "anti_raid_toggle",
+      "enabled": true,
+      "timestamp": 1792298769275
+    }
+  ],
+  "tickets": [
+    {
+      "id": "1561238867103973461",
+      "channelId": "1560960746249003020",
+      "categoryId": "1560960746249003018",
+      "openTickets": []
+    }
+  ],
+  "trustedBotAdders": [
+    "1482671904488685673"
+  ],
+  "activityChecks": [
+    {
+      "id": "1561238836879564894-1792298746320",
+      "guildId": "1560960745217196054",
+      "channelId": "1560960746249003020",
+      "messageId": "1561238836879564894",
+      "startTime": 1792298746320,
+      "endTime": 1792300546320,
+      "requiredCount": 5,
+      "reactedUserIds": [
+        "1482671904488685673"
+      ],
+      "completed": false
+    }
+  ],
+  "antiRaidEnabled": true
+}
