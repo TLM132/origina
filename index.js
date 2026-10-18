@@ -13,7 +13,10 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  SlashCommandBuilder,
+  Routes,
+  REST
 } = require("discord.js");
 
 require("dotenv").config();
@@ -81,9 +84,8 @@ const client = new Client({
 // REQUIRED GUILD ID
 // ===============================
 const GUILD_ID = process.env.GUILD_ID;
-
 if (!GUILD_ID) {
-  console.error("❌ ERROR: GUILD_ID is missing in environment variables.");
+  console.error("❌ ERROR: GUILD_ID missing.");
   process.exit(1);
 }
 
@@ -108,21 +110,19 @@ app.post("/api/save", (req, res) => {
 });
 
 // ===============================
-// Guild Helper (ONLY uses GUILD_ID)
+// Guild Helper
 // ===============================
 async function getGuild() {
   try {
-    const guild = await client.guilds.fetch(GUILD_ID);
-    return guild;
+    return await client.guilds.fetch(GUILD_ID);
   } catch (e) {
-    console.error("❌ ERROR: Cannot fetch guild with GUILD_ID:", GUILD_ID);
-    console.error(e);
+    console.log("❌ Guild fetch failed:", e);
     return null;
   }
 }
 
 // ===============================
-// Dropdown Endpoints (FIXED)
+// Dropdown Endpoints
 // ===============================
 app.get("/api/guild/text-channels", async (req, res) => {
   const guild = await getGuild();
@@ -160,7 +160,7 @@ app.get("/api/guild/members", async (req, res) => {
     .filter(m => !m.user.bot)
     .map(m => ({
       id: m.id,
-      name: m.user.username // FIXED: username instead of ID
+      name: m.user.username
     }));
 
   res.json(members);
@@ -287,7 +287,7 @@ app.post("/api/staff/points/add", (req, res) => {
 });
 
 // ===============================
-// Tickets
+// TICKET PANEL
 // ===============================
 app.post("/api/tickets/panel/create", async (req, res) => {
   const { channelId, title, description, categoryId } = req.body;
@@ -299,7 +299,7 @@ app.post("/api/tickets/panel/create", async (req, res) => {
 
     const embed = new EmbedBuilder()
       .setTitle(title || "Ticket Panel")
-      .setDescription(description || "Click the button below to open a ticket.")
+      .setDescription(description || "Click below to open a ticket.")
       .setColor(config.mainColor);
 
     const row = new ActionRowBuilder().addComponents(
@@ -314,246 +314,103 @@ app.post("/api/tickets/panel/create", async (req, res) => {
     save.tickets.push({
       id: msg.id,
       channelId,
-      categoryId: categoryId || null,
+      categoryId,
       openTickets: []
     });
 
-    save.serverEvents.push({
-      type: "ticket_panel_sent",
-      channelId,
-      timestamp: Date.now()
-    });
-
     writeSave();
-    res.json({ success: true, messageId: msg.id });
+    res.json({ success: true });
   } catch {
-    res.json({ error: "Failed to create panel" });
+    res.json({ error: "Failed" });
   }
 });
 
 // ===============================
-// Anti-Raid & Trusted Bot Adders
+// OPEN TICKET HANDLER
 // ===============================
-app.get("/api/anti-raid/state", (req, res) => {
-  res.json({
-    antiRaidEnabled: !!save.antiRaidEnabled,
-    trustedBotAdders: save.trustedBotAdders || []
-  });
-});
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isButton()) return;
 
-app.post("/api/anti-raid/toggle", (req, res) => {
-  const { enabled } = req.body;
-  save.antiRaidEnabled = !!enabled;
+  if (interaction.customId === "open_ticket") {
+    const guild = await getGuild();
+    const categoryId = save.tickets.find(t => t.id === interaction.message.id)?.categoryId;
 
-  save.serverEvents.push({
-    type: "anti_raid_toggle",
-    enabled,
-    timestamp: Date.now()
-  });
+    const category = categoryId ? guild.channels.cache.get(categoryId) : null;
 
-  writeSave();
-  res.json({ success: true });
-});
-
-app.post("/api/trusted-bot-adders/add", (req, res) => {
-  const { userId } = req.body;
-
-  if (!save.trustedBotAdders.includes(userId)) {
-    save.trustedBotAdders.push(userId);
-
-    save.serverEvents.push({
-      type: "trusted_add",
-      userId,
-      timestamp: Date.now()
+    const ticketChannel = await guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: 0,
+      parent: categoryId || null,
+      permissionOverwrites: [
+        {
+          id: guild.id,
+          deny: ["ViewChannel"]
+        },
+        {
+          id: interaction.user.id,
+          allow: ["ViewChannel", "SendMessages"]
+        }
+      ]
     });
-
-    writeSave();
-  }
-
-  res.json({ success: true, list: save.trustedBotAdders });
-});
-
-app.post("/api/trusted-bot-adders/remove", (req, res) => {
-  const { userId } = req.body;
-
-  save.trustedBotAdders = save.trustedBotAdders.filter(id => id !== userId);
-
-  save.serverEvents.push({
-    type: "trusted_remove",
-    userId,
-    timestamp: Date.now()
-  });
-
-  writeSave();
-  res.json({ success: true, list: save.trustedBotAdders });
-});
-
-// ===============================
-// Adult Logs
-// ===============================
-app.get("/api/adult/logs", (req, res) => {
-  res.json(save.adultLogs);
-});
-
-// ===============================
-// Server Events
-// ===============================
-app.get("/api/server/events", (req, res) => {
-  res.json(save.serverEvents);
-});
-
-// ===============================
-// Activity Check
-// ===============================
-app.post("/api/activity/create", async (req, res) => {
-  const { channelId, durationMinutes, requiredCount } = req.body;
-  const guild = await getGuild();
-  if (!guild) return res.json({ error: "Guild not found" });
-
-  try {
-    const channel = await guild.channels.fetch(channelId);
 
     const embed = new EmbedBuilder()
-      .setTitle("Activity Check")
-      .setDescription("React with ✅ to confirm you're active.")
+      .setTitle("Ticket Opened")
+      .setDescription("A staff member will assist you shortly.")
       .setColor(config.mainColor);
 
-    const msg = await channel.send({ embeds: [embed] });
-    await msg.react("✅");
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("claim_ticket")
+        .setLabel("Claim")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("close_ticket")
+        .setLabel("Close")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-    const check = {
-      id: `${msg.id}-${Date.now()}`,
-      guildId: guild.id,
-      channelId,
-      messageId: msg.id,
-      startTime: Date.now(),
-      endTime: Date.now() + durationMinutes * 60000,
-      requiredCount,
-      reactedUserIds: [],
-      completed: false
-    };
+    await ticketChannel.send({ embeds: [embed], components: [row] });
 
-    save.activityChecks.push(check);
-
-    save.serverEvents.push({
-      type: "activity_check_created",
-      channelId,
-      timestamp: Date.now()
-    });
-
-    writeSave();
-
-    scheduleActivityCheck(check);
-
-    res.json({ success: true, check });
-  } catch {
-    res.json({ error: "Failed to create activity check" });
+    await interaction.reply({ content: `Ticket created: ${ticketChannel}`, ephemeral: true });
   }
-});
 
-function scheduleActivityCheck(check) {
-  const delay = check.endTime - Date.now();
-  setTimeout(() => finalizeActivityCheck(check), delay);
-}
+  if (interaction.customId === "claim_ticket") {
+    await interaction.reply({ content: `Ticket claimed by ${interaction.user.username}`, ephemeral: false });
+  }
 
-async function finalizeActivityCheck(check) {
-  const guild = await getGuild();
-  if (!guild) return;
-
-  try {
-    await guild.members.fetch();
-    const channel = await guild.channels.fetch(check.channelId);
-    const message = await channel.messages.fetch(check.messageId);
-
-    const reacted = new Set(check.reactedUserIds);
-
-    const reaction = message.reactions.resolve("✅");
-    if (reaction) {
-      const users = await reaction.users.fetch();
-      users.forEach(u => {
-        if (!u.bot) reacted.add(u.id);
-      });
-    }
-
-    const active = [];
-    const inactive = [];
-
-    guild.members.cache.forEach(m => {
-      if (m.user.bot) return;
-      if (reacted.has(m.id)) active.push(m.user.username);
-      else inactive.push(m.user.username);
-    });
-
-    const embed = new EmbedBuilder()
-      .setTitle("Activity Check Summary")
-      .setColor(config.mainColor)
-      .addFields(
-        { name: "Active", value: active.join("\n") || "None" },
-        { name: "Inactive", value: inactive.join("\n") || "None" },
-        { name: "Required Count", value: String(check.requiredCount) }
-      );
-
-    await channel.send({ embeds: [embed] });
-
-    check.completed = true;
-
-    save.serverEvents.push({
-      type: "activity_check_completed",
-      channelId: check.channelId,
-      timestamp: Date.now()
-    });
-
-    writeSave();
-  } catch {}
-}
-
-client.on("messageReactionAdd", async (reaction, user) => {
-  if (user.bot) return;
-
-  if (reaction.partial) await reaction.fetch();
-  if (reaction.emoji.name !== "✅") return;
-
-  const msg = reaction.message;
-  const check = save.activityChecks.find(
-    c => c.messageId === msg.id && !c.completed
-  );
-
-  if (!check) return;
-
-  if (!check.reactedUserIds.includes(user.id)) {
-    check.reactedUserIds.push(user.id);
-    writeSave();
+  if (interaction.customId === "close_ticket") {
+    await interaction.channel.delete();
   }
 });
 
 // ===============================
-// Message Delete Logging
+// /close COMMAND
 // ===============================
-client.on("messageDelete", async message => {
-  if (!message.guild) return;
+const commands = [
+  new SlashCommandBuilder()
+    .setName("close")
+    .setDescription("Close the current ticket")
+];
 
-  save.serverEvents.push({
-    type: "message_deleted",
-    content: message.content || "(no content)",
-    author: message.author ? message.author.username : "Unknown",
-    channel: message.channel.name,
-    timestamp: Date.now()
-  });
+const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
 
-  writeSave();
-});
-client.once("ready", async () => {
-  console.log("BOT READY:", client.user.tag);
-
-  console.log("ENV GUILD_ID:", process.env.GUILD_ID);
-
+(async () => {
   try {
-    const guild = await client.guilds.fetch(process.env.GUILD_ID);
-    console.log("CONNECTED TO GUILD:", guild.name);
-    console.log("GUILD ID MATCH:", guild.id);
+    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
+      body: commands
+    });
+    console.log("✔ /close command registered");
   } catch (e) {
-    console.log("❌ FAILED TO FETCH GUILD");
-    console.log(e);
+    console.log("❌ Failed to register /close:", e);
+  }
+})();
+
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "close") {
+    await interaction.reply("Closing ticket...");
+    await interaction.channel.delete();
   }
 });
 
@@ -564,14 +421,14 @@ app.listen(config.port, () => {
   console.log(`Dashboard running on http://localhost:${config.port}`);
 });
 
-client.once("clientReady", async () => {
+client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   try {
     const guild = await client.guilds.fetch(GUILD_ID);
     console.log("✔ Connected to guild:", guild.name);
   } catch {
-    console.log("❌ Could not connect to guild with ID:", GUILD_ID);
+    console.log("❌ Could not connect to guild:", GUILD_ID);
   }
 });
 
