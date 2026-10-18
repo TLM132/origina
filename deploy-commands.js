@@ -1,47 +1,109 @@
-const { REST, Routes } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+// ===============================
+// Origin SMP – deploy-commands.js
+// ===============================
 
-// ⭐ Your bot's application/client ID
-const clientId = "1523615776064405595";
+const { REST, Routes } = require("discord.js");
+require("dotenv").config();
 
-// ⭐ Load token from config.json
-const config = require('./config.json');
-const token = config.token;
+// Your bot's application/client ID (saved in memory)
+const CLIENT_ID = "1523615776064405595";
 
-// ⭐ Load all commands from /commands folder
-const commands = [];
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+// Your bot token
+const TOKEN = process.env.DISCORD_TOKEN;
 
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
+// ===============================
+// Slash Commands
+// ===============================
 
-    if ('data' in command && 'execute' in command) {
-        commands.push(command.data.toJSON());
-    } else {
-        console.log(`⚠️ WARNING: ${file} is missing "data" or "execute"`);
-    }
-}
+const commands = [
+  {
+    name: "close",
+    description: "Close the current ticket"
+  },
 
-const rest = new REST({ version: '10' }).setToken(token);
+  {
+    name: "panel1",
+    description: "Send panel 1"
+  },
 
-// ⭐ Register commands globally (Discord)
-async function deploy() {
-    try {
-        console.log('🔄 Deploying slash commands to Discord…');
+  {
+    name: "panel2",
+    description: "Send panel 2"
+  },
 
-        await rest.put(
-            Routes.applicationCommands(clientId),
-            { body: commands },
-        );
+  {
+    name: "logs",
+    description: "Show logs"
+  },
 
-        console.log('✅ Commands deployed globally.');
-        console.log('💻 Commands also ready for localhost.');
-    } catch (error) {
-        console.error(error);
-    }
-}
+  {
+    name: "apply",
+    description: "Send apply panel"
+  },
 
-deploy();
+  {
+    name: "application-log",
+    description: "Show application logs"
+  },
+
+  {
+    name: "points",
+    description: "Show your staff points"
+  },
+
+  {
+    name: "addpoints",
+    description: "Add points to a staff member",
+    options: [
+      {
+        name: "user",
+        description: "User to add points to",
+        type: 6,
+        required: true
+      },
+      {
+        name: "amount",
+        description: "Amount of points",
+        type: 4,
+        required: true
+      }
+    ]
+  },
+
+  {
+    name: "point-leaderboard",
+    description: "Show staff point leaderboard"
+  },
+
+  {
+    name: "level",
+    description: "Show your level"
+  },
+
+  {
+    name: "level-leaderboard",
+    description: "Show level leaderboard"
+  }
+];
+
+// ===============================
+// Deploy Commands
+// ===============================
+
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+(async () => {
+  try {
+    console.log("Deploying slash commands...");
+
+    await rest.put(
+      Routes.applicationCommands(CLIENT_ID),
+      { body: commands }
+    );
+
+    console.log("✔ Slash commands deployed successfully.");
+  } catch (err) {
+    console.error("❌ Error deploying commands:");
+    console.error(err);
+  }
+})();
